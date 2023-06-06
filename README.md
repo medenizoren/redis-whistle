@@ -6,9 +6,9 @@ RedisWhistle is a mini Redis clone developed in Go, designed to whistle away you
 
 You can download pre-built binaries for RedisWhistle for different operating systems from the GitHub Releases page. Choose the binary that matches your system and get ready to whistle!
 
-- [Linux (x64)](https://github.com/medenizoren/RedisWhistle/releases/download/v1.0.0/RedisWhistle-linux-amd64)
-- [macOS](https://github.com/medenizoren/RedisWhistle/releases/download/v1.0.0/RedisWhistle-darwin-amd64)
-- [Windows](https://github.com/medenizoren/RedisWhistle/releases/download/v1.0.0/RedisWhistle-windows-amd64.exe)
+- [Linux (x64)](https://github.com/medenizoren/redis-whistle/releases/download/v1.0.0/RedisWhistle-linux-amd64)
+- [macOS](https://github.com/medenizoren/redis-whistle/releases/download/v1.0.0/RedisWhistle-darwin-amd64)
+- [Windows](https://github.com/medenizoren/redis-whistle/releases/download/v1.0.0/RedisWhistle-windows-amd64.exe)
 
 ## Installation
 
@@ -21,7 +21,7 @@ To install RedisWhistle using the provided binaries, follow these steps:
 2. Download the Linux binary:
 
 ```bash
-$ wget https://github.com/medenizoren/RedisWhistle/releases/download/v1.0.0/RedisWhistle-linux-amd64
+$ wget https://github.com/medenizoren/redis-whistle/releases/download/v1.0.0/RedisWhistle-linux-amd64
 ```
 
 3. Make the binary executable:
@@ -43,7 +43,7 @@ $ ./RedisWhistle-linux-amd64
 2. Download the macOS binary:
 
 ```bash
-$ curl -LO https://github.com/medenizoren/RedisWhistle/releases/download/v1.0.0/RedisWhistle-darwin-amd64
+$ curl -LO https://github.com/medenizoren/redis-whistle/releases/download/v1.0.0/RedisWhistle-darwin-amd64
 ```
 
 3. Make the binary executable:
@@ -72,12 +72,12 @@ If you want to build RedisWhistle, follow these simple steps:
 
 1. Clone the repository to your local machine:
    ```shell
-   git clone https://github.com/medenizoren/RedisWhistle.git
+   git clone https://github.com/medenizoren/redis-whistle.git
    ```
 
 2. Navigate to the project directory:
    ```shell
-   cd RedisWhistle
+   cd redis-whistle
    ```
 
 3. Build the project:
@@ -87,7 +87,7 @@ If you want to build RedisWhistle, follow these simple steps:
 
 4. Run RedisWhistle:
    ```shell
-   ./RedisWhistle
+   ./redis-whistle
    ```
 
 5. RedisWhistle is now up and running, ready to respond to your commands.
@@ -99,13 +99,13 @@ RedisWhistle supports the following command-line flags:
 - `port`: The port number for the Redis server to listen on. By default, it is set to `6379`. You can specify a different port using the `-port` flag. For example:
 
 ```bash
-$ ./RedisWhistle -port 8080
+$ ./redis-whistle -port 8080
 ```
 
 - `load`: If you have a Redis database dump file, you can use the `-load` flag to load the data into RedisWhistle. Provide the file name as the value for the `-load` flag. For example:
 
 ```bash
-$ ./RedisWhistle -load dump.db
+$ ./redis-whistle -load dump.db
 ```
 
 ## Supported Commands
@@ -169,11 +169,3 @@ RedisWhistle is an open-source project, and we welcome contributions from the co
 
 ## License
 RedisWhistle is released under the [MIT License](LICENSE). RedisWhistle knows the importance of freedom and spreading joy through open-source software.
-
-## Acknowledgments
-RedisWhistle wouldn't have been possible without the inspiration and incredible work of the Redis community. We extend our heartfelt thanks to everyone who has contributed to RedisWhistle and continues to support its development. Keep whistling with RedisWhistle!
-
----
-
-RedisWhistle – Whistling away your data storage worries since 2023!
-
