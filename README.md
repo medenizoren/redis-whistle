@@ -1,6 +1,6 @@
 # RedisWhistle
 
-RedisWhistle is a mini Redis clone developed in Go, designed to whistle away your data storage worries. With RedisWhistle, you can store, retrieve, and manipulate your data with a touch of humor and a pinch of magic.
+RedisWhistle is a mini Redis clone developed in Go, designed to whistle away your data storage worries. With RedisWhistle, you can store, retrieve, and manipulate your data.
 
 ## Download Binaries
 
@@ -114,7 +114,7 @@ RedisWhistle supports the following commands:
 
 - `PING`: Test if RedisWhistle is listening. Expect a "PONG" response.
 
-- `ECHO [message]`: Returns the message you provide. RedisWhistle will echo it back with its own twist of humor.
+- `ECHO [message]`: Returns the message you provide. RedisWhistle will echo it back
 
 - `SET [key] [value]`: Set a key-value pair in the RedisWhistle store.
 
