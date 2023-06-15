@@ -2,9 +2,33 @@
 
 RedisWhistle is a mini Redis clone developed in Go, designed to whistle away your data storage worries. With RedisWhistle, you can store, retrieve, and manipulate your data.
 
+## Docker
+
+RedisWhistle is available as a Docker image, allowing you to run it in a containerized environment. Follow the steps below to get started with Docker:
+
+1. Pull the Docker image from the GitHub Container Registry:
+
+```bash
+$ docker pull ghcr.io/medenizoren/redis-whistle:latest
+```
+
+2. Run RedisWhistle in a Docker container:
+
+```bash
+$ docker run -p 6379:6379 ghcr.io/medenizoren/redis-whistle:latest
+```
+
+
+By default, RedisWhistle will listen on port 6379 within the Docker container and forward it to the same port on your local machine. 
+
+That's it! RedisWhistle is now up and running within a Docker container.
+
+Note: Make sure you have Docker installed and running on your machine before following these steps.
+
+
 ## Download Binaries
 
-You can download pre-built binaries for RedisWhistle for different operating systems from the GitHub Releases page. Choose the binary that matches your system and get ready to whistle!
+You can also download pre-built binaries for RedisWhistle for different operating systems from the GitHub Releases page. Choose the binary that matches your system and get ready to whistle!
 
 ## Installation
 
