@@ -1,4 +1,3 @@
-// Description: This file contains the Database struct and its methods.
 package main
 
 import (
@@ -10,7 +9,7 @@ import (
 	"time"
 )
 
-// Database is a Redis database.
+// A Database is a Redis database.
 // It contains two maps: StringKeys and ExpireKeys.
 // StringKeys stores the string values.
 // ExpireKeys stores the expiration times of the keys.

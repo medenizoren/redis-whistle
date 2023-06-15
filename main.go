@@ -1,4 +1,9 @@
-// Description: This file contains the main server logic
+// RedisWhistle is a mini Redis clone developed in Go,
+// designed to whistle away your data storage worries.
+// With RedisWhistle, you can store, retrieve, and manipulate your data.
+
+// Package main implements a simple Redis server,
+// with support for the most used commands.
 package main
 
 import (
