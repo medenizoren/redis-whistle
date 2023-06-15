@@ -40,6 +40,7 @@ func (server *RedisServer) Init() {
 
 // StartDB starts the database.
 func (server *RedisServer) StartDB(fileName string) {
+	server.databases[server.selectedDB].checkAndRemoveExpiredKeys()
 	server.databases[server.selectedDB].Init(fileName)
 }
 
