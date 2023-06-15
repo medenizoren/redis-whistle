@@ -1,5 +1,3 @@
-// This file contains the code for the Redis protocol.
-// The protocol is implemented as a RESP parser.
 package main
 
 import (
@@ -9,7 +7,7 @@ import (
 	"strconv"
 )
 
-// Type represents a Value type.
+// A Type represents a Value type.
 type Type byte
 
 const (
@@ -18,7 +16,7 @@ const (
 	Array        Type = '*'
 )
 
-// Value represents the data of a valid RESP type.
+// A Value represents the data of a valid RESP type.
 type Value struct {
 	typ   Type
 	bytes []byte

@@ -1,4 +1,3 @@
-// Description: This file contains the server implementation.
 package main
 
 import (
@@ -13,13 +12,13 @@ import (
 	"sync"
 )
 
-// config represents the server configuration.
+// A config represents the server configuration.
 type config struct {
 	port     int
 	fileName string
 }
 
-// RedisServer represents a Redis server.
+// A RedisServer represents a Redis server.
 type RedisServer struct {
 	config     *config
 	logger     *log.Logger

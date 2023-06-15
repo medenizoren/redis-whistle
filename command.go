@@ -1,4 +1,3 @@
-// Description: This file contains the Redis command functions.
 package main
 
 import (
@@ -6,7 +5,7 @@ import (
 	"strings"
 )
 
-// CommandFunc is the type of a Redis command function.
+// A CommandFunc is the type of a Redis command function.
 type CommandFunc func(args []string) string
 
 // CommandMap stores the Redis command functions.
