@@ -6,10 +6,6 @@ RedisWhistle is a mini Redis clone developed in Go, designed to whistle away you
 
 You can download pre-built binaries for RedisWhistle for different operating systems from the GitHub Releases page. Choose the binary that matches your system and get ready to whistle!
 
-- [Linux (x64)](https://github.com/medenizoren/redis-whistle/releases/download/v1.0.0/RedisWhistle-linux-amd64)
-- [macOS](https://github.com/medenizoren/redis-whistle/releases/download/v1.0.0/RedisWhistle-darwin-amd64)
-- [Windows](https://github.com/medenizoren/redis-whistle/releases/download/v1.0.0/RedisWhistle-windows-amd64.exe)
-
 ## Installation
 
 To install RedisWhistle using the provided binaries, follow these steps:
@@ -18,11 +14,7 @@ To install RedisWhistle using the provided binaries, follow these steps:
 
 1. Open a terminal.
 
-2. Download the Linux binary:
-
-```bash
-$ wget https://github.com/medenizoren/redis-whistle/releases/download/v1.0.0/RedisWhistle-linux-amd64
-```
+2. Download the Linux binary, from the Releases page.
 
 3. Make the binary executable:
 
@@ -40,12 +32,8 @@ $ ./RedisWhistle-linux-amd64
 
 1. Open a terminal.
 
-2. Download the macOS binary:
-
-```bash
-$ curl -LO https://github.com/medenizoren/redis-whistle/releases/download/v1.0.0/RedisWhistle-darwin-amd64
-```
-
+2. Download the macOS binary, from the Releases page.
+      
 3. Make the binary executable:
 
 ```bash
@@ -60,7 +48,7 @@ $ ./RedisWhistle-darwin-amd64
 
 ### Windows
 
-1. Download the Windows binary from the provided link.
+1. Download the Windows binary from the Releases page.
 
 2. Double-click the downloaded `RedisWhistle-windows-amd64.exe` file to run RedisWhistle.
 
