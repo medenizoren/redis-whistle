@@ -24,16 +24,20 @@ const (
 	oneReply  = ":1\r\n"
 )
 
+func teardown() {
+	redis.databases[redis.selectedDB].Flush()
+}
+
 func TestPingCommand(t *testing.T) {
 	// Test with no arguments
 	result := pingCommand([]string{})
-	if result != "+PONG\r\n" {
+	if result != returnSimpleString("PONG") {
 		t.Errorf("pingCommand([]string{}) = %s; want +PONG\\r\\n", result)
 	}
 
 	// Test with one argument
 	result = pingCommand([]string{"hello"})
-	if result != "$5\r\nhello\r\n" {
+	if result != returnBulkString("hello") {
 		t.Errorf("pingCommand([]string{\"hello\"}) = %s; want $5\\r\\nhello\\r\\n", result)
 	}
 }
@@ -41,12 +45,14 @@ func TestPingCommand(t *testing.T) {
 func TestEchoCommand(t *testing.T) {
 	// Test with one argument
 	result := echoCommand([]string{"hello"})
-	if result != "$5\r\nhello\r\n" {
+	if result != returnBulkString("hello") {
 		t.Errorf("echoCommand([]string{\"hello\"}) = %s; want $5\\r\\nhello\\r\\n", result)
 	}
 }
 
 func TestSetCommand(t *testing.T) {
+	defer teardown()
+
 	// Test with two arguments
 	result := setCommand([]string{"key", "value"})
 	if result != okReply {
@@ -73,6 +79,8 @@ func TestSetCommand(t *testing.T) {
 }
 
 func TestSetexCommand(t *testing.T) {
+	defer teardown()
+
 	// Test with two arguments
 	result := setexCommand([]string{"key", "1", "value"})
 	if result != okReply {
@@ -81,9 +89,10 @@ func TestSetexCommand(t *testing.T) {
 }
 
 func TestGetCommand(t *testing.T) {
-	// Test with existing key
+	defer teardown()
 
-	redis.databases[redis.selectedDB].Set("key", "value")
+	// Test with existing key
+	setCommand([]string{"key", "value"})
 	result := getCommand([]string{"key"})
 	if result != "$5\r\nvalue\r\n" {
 		t.Errorf("getCommand([]string{\"key\"}) = %s; want $5\\r\\nvalue\\r\\n", result)
@@ -97,8 +106,10 @@ func TestGetCommand(t *testing.T) {
 }
 
 func TestGetSetCommand(t *testing.T) {
+	defer teardown()
+
 	// Test with existing key
-	redis.databases[redis.selectedDB].Set("key", "value")
+	setCommand([]string{"key", "value"})
 	result := getsetCommand([]string{"key", "new-value"})
 	if result != "$5\r\nvalue\r\n" {
 		t.Errorf("getsetCommand([]string{\"key\", \"new-value\"}) = %s; want $5\\r\\nvalue\\r\\n", result)
@@ -112,16 +123,16 @@ func TestGetSetCommand(t *testing.T) {
 }
 
 func TestGetDelCommand(t *testing.T) {
-	redis.databases[redis.selectedDB].Flush()
+	defer teardown()
 
 	// Test with existing key
-	redis.databases[redis.selectedDB].Set("key", "value")
+	setCommand([]string{"key", "value"})
 	result := getdelCommand([]string{"key"})
 	if result != "$5\r\nvalue\r\n" {
 		t.Errorf("getdelCommand([]string{\"key\"}) = %s; want $5\\r\\nvalue\\r\\n", result)
 	}
-	if redis.databases[redis.selectedDB].Get("key") != "" {
-		t.Errorf("database.Get(\"key\") = %s; want \"\"", redis.databases[redis.selectedDB].Get("key"))
+	if getCommand([]string{"key"}) != nullReply {
+		t.Errorf("database.Get(\"key\") = %s; want \"\"", getCommand([]string{"key"}))
 	}
 
 	// Test with non-existing key
@@ -132,6 +143,8 @@ func TestGetDelCommand(t *testing.T) {
 }
 
 func TestMsetCommand(t *testing.T) {
+	defer teardown()
+
 	// Test with even number of arguments
 	result := msetCommand([]string{"key1", "value1", "key2"})
 	if result != "-ERR wrong number of arguments for 'MSET' command\r\n" {
@@ -143,16 +156,16 @@ func TestMsetCommand(t *testing.T) {
 	if result != okReply {
 		t.Errorf("msetCommand([]string{\"key1\", \"value1\", \"key2\", \"value2\"}) = %s; want +OK\\r\\n", result)
 	}
-	if redis.databases[redis.selectedDB].Get("key1") != "value1" {
-		t.Errorf("database.Get(\"key1\") = %s; want \"value1\"", redis.databases[redis.selectedDB].Get("key1"))
+	if getCommand([]string{"key1"}) != returnBulkString("value1") {
+		t.Errorf("database.Get(\"key1\") = %s; want \"value1\"", getCommand([]string{"key1"}))
 	}
-	if redis.databases[redis.selectedDB].Get("key2") != "value2" {
-		t.Errorf("database.Get(\"key2\") = %s; want \"value2\"", redis.databases[redis.selectedDB].Get("key2"))
+	if getCommand([]string{"key2"}) != returnBulkString("value2") {
+		t.Errorf("database.Get(\"key2\") = %s; want \"value2\"", getCommand([]string{"key2"}))
 	}
 }
 
 func TestMsetnxCommand(t *testing.T) {
-	redis.databases[redis.selectedDB].Flush()
+	defer teardown()
 
 	// Test with even number of arguments
 	result := msetnxCommand([]string{"key1", "value1", "key2"})
@@ -165,29 +178,29 @@ func TestMsetnxCommand(t *testing.T) {
 	if result != oneReply {
 		t.Errorf("msetnxCommand([]string{\"key1\", \"value1\", \"key2\", \"value2\"}) = %s; want :1\\r\\n", result)
 	}
-	if redis.databases[redis.selectedDB].Get("key1") != "value1" {
-		t.Errorf("database.Get(\"key1\") = %s; want \"value1\"", redis.databases[redis.selectedDB].Get("key1"))
+	if getCommand([]string{"key1"}) != returnBulkString("value1") {
+		t.Errorf("database.Get(\"key1\") = %s; want \"value1\"", getCommand([]string{"key1"}))
 	}
-	if redis.databases[redis.selectedDB].Get("key2") != "value2" {
-		t.Errorf("database.Get(\"key2\") = %s; want \"value2\"", redis.databases[redis.selectedDB].Get("key2"))
+	if getCommand([]string{"key2"}) != returnBulkString("value2") {
+		t.Errorf("database.Get(\"key2\") = %s; want \"value2\"", getCommand([]string{"key2"}))
 	}
 
 	// Test with existing keys
-	redis.databases[redis.selectedDB].Flush()
-	redis.databases[redis.selectedDB].Set("key1", "value1")
 	result = msetnxCommand([]string{"key1", "new-value1", "key2", "value2"})
 	if result != zeroReply {
 		t.Errorf("msetnxCommand([]string{\"key1\", \"new-value1\", \"key2\", \"value2\"}) = %s; want :0\\r\\n", result)
 	}
-	if redis.databases[redis.selectedDB].Get("key1") != "value1" {
-		t.Errorf("database.Get(\"key1\") = %s; want \"value1\"", redis.databases[redis.selectedDB].Get("key1"))
+	if getCommand([]string{"key1"}) != returnBulkString("value1") {
+		t.Errorf("database.Get(\"key1\") = %s; want \"value1\"", getCommand([]string{"key1"}))
 	}
-	if redis.databases[redis.selectedDB].Get("key2") != "" {
-		t.Errorf("database.Get(\"key2\") = %s; want \"\"", redis.databases[redis.selectedDB].Get("key2"))
+	if getCommand([]string{"key2"}) != returnBulkString("value2") {
+		t.Errorf("database.Get(\"key2\") = %s; want \"\"", getCommand([]string{"key2"}))
 	}
 }
 
 func TestMgetCommand(t *testing.T) {
+	defer teardown()
+
 	// Test with non-existing keys
 	result := mgetCommand([]string{"non-existing-key1", "non-existing-key2"})
 	if result != "*2\r\n$-1\r\n$-1\r\n" {
@@ -195,8 +208,7 @@ func TestMgetCommand(t *testing.T) {
 	}
 
 	// Test with existing keys
-	redis.databases[redis.selectedDB].Set("key1", "value1")
-	redis.databases[redis.selectedDB].Set("key2", "value2")
+	msetCommand([]string{"key1", "value1", "key2", "value2"})
 	result = mgetCommand([]string{"key1", "key2"})
 	if result != "*2\r\n$6\r\nvalue1\r\n$6\r\nvalue2\r\n" {
 		t.Errorf("mgetCommand([]string{\"key1\", \"key2\"}) = %s; want *2\\r\\n$6\\r\\nvalue1\\r\\n$6\\r\\nvalue2\\r\\n", result)
@@ -211,17 +223,20 @@ func TestDelCommand(t *testing.T) {
 	}
 
 	// Test with existing key
-	redis.databases[redis.selectedDB].Set("key", "value")
+	setCommand([]string{"key", "value"})
 	result = delCommand([]string{"key"})
 	if result != oneReply {
 		t.Errorf("delCommand([]string{\"key\"}) = %s; want :1\\r\\n", result)
 	}
-	if redis.databases[redis.selectedDB].Get("key") != "" {
-		t.Errorf("database.Get(\"key\") = %s; want \"\"", redis.databases[redis.selectedDB].Get("key"))
+
+	if getCommand([]string{"key"}) != nullReply {
+		t.Errorf("database.Get(\"key\") = %s; want \"\"", getCommand([]string{"key"}))
 	}
 }
 
 func TestIncrCommand(t *testing.T) {
+	defer teardown()
+
 	// Test with non-existing key
 	result := incrCommand([]string{"non-existing-key"})
 	if result != oneReply {
@@ -229,7 +244,8 @@ func TestIncrCommand(t *testing.T) {
 	}
 
 	// Test with existing key
-	redis.databases[redis.selectedDB].Set("key", "10")
+	// redis.databases[redis.selectedDB].Set("key", "10")
+	setCommand([]string{"key", "10"})
 	result = incrCommand([]string{"key"})
 	if result != ":11\r\n" {
 		t.Errorf("incrCommand([]string{\"key\"}) = %s; want :11\\r\\n", result)
@@ -237,7 +253,7 @@ func TestIncrCommand(t *testing.T) {
 }
 
 func TestDecrCommand(t *testing.T) {
-	redis.databases[redis.selectedDB].Flush()
+	defer teardown()
 
 	// Test with non-existing key
 	result := decrCommand([]string{"non-existing-key"})
@@ -246,7 +262,7 @@ func TestDecrCommand(t *testing.T) {
 	}
 
 	// Test with existing key
-	redis.databases[redis.selectedDB].Set("key", "10")
+	setCommand([]string{"key", "10"})
 	result = decrCommand([]string{"key"})
 	if result != ":9\r\n" {
 		t.Errorf("decrCommand([]string{\"key\"}) = %s; want :9\\r\\n", result)
@@ -254,7 +270,8 @@ func TestDecrCommand(t *testing.T) {
 }
 
 func TestExpireCommand(t *testing.T) {
-	redis.databases[redis.selectedDB].Flush()
+	defer teardown()
+	selectCommand([]string{"1"})
 
 	// Test with non-existing key
 	result := expireCommand([]string{"non-existing-key", "10"})
@@ -263,19 +280,23 @@ func TestExpireCommand(t *testing.T) {
 	}
 
 	// Test with existing key
-	redis.databases[redis.selectedDB].Set("key", "value")
+	setCommand([]string{"key", "value"})
 	result = expireCommand([]string{"key", "1"})
 	if result != oneReply {
 		t.Errorf("expireCommand([]string{\"key\", \"1\"}) = %s; want :1\\r\\n", result)
 	}
+
 	time.Sleep(2 * time.Second)
-	if redis.databases[redis.selectedDB].Get("key") != "" {
-		t.Errorf("database.Get(\"key\") = %s; want \"\"", redis.databases[redis.selectedDB].Get("key"))
+	if getCommand([]string{"key"}) != nullReply {
+		t.Errorf("database.Get(\"key\") = %s; want \"\"", getCommand([]string{"key"}))
 	}
+
+	selectCommand([]string{"0"})
 }
 
 func TestTtlCommand(t *testing.T) {
-	redis.databases[redis.selectedDB].Flush()
+	defer teardown()
+	selectCommand([]string{"2"})
 
 	// Test with non-existing key
 	result := ttlCommand([]string{"non-existing-key"})
@@ -284,22 +305,25 @@ func TestTtlCommand(t *testing.T) {
 	}
 
 	// Test with existing key
-	redis.databases[redis.selectedDB].Flush()
-	redis.databases[redis.selectedDB].Set("key", "value")
+	setCommand([]string{"key", "value"})
 	result = ttlCommand([]string{"key"})
 	if result != ":-1\r\n" {
 		t.Errorf("ttlCommand([]string{\"key\"}) = %s; want :-1\\r\\n", result)
 	}
-	redis.databases[redis.selectedDB].Expire("key", 1)
+
+	expireCommand([]string{"key", "1"})
 	time.Sleep(2 * time.Second)
 	result = ttlCommand([]string{"key"})
 	if result != ":-2\r\n" {
 		t.Errorf("ttlCommand([]string{\"key\"}) = %s; want :-2\\r\\n", result)
 	}
+
+	selectCommand([]string{"0"})
 }
 
 func TestPersistCommand(t *testing.T) {
-	redis.databases[redis.selectedDB].Flush()
+	defer teardown()
+	selectCommand([]string{"3"})
 
 	// Test with non-existing key
 	result := persistCommand([]string{"non-existing-key"})
@@ -308,26 +332,29 @@ func TestPersistCommand(t *testing.T) {
 	}
 
 	// Test with existing key that has no expiration
-	redis.databases[redis.selectedDB].Set("key", "value")
+	setCommand([]string{"key", "value"})
 	result = persistCommand([]string{"key"})
 	if result != zeroReply {
 		t.Errorf("persistCommand([]string{\"key\"}) = %s; want :0\\r\\n", result)
 	}
 
 	// Test with existing key that has expiration
-	redis.databases[redis.selectedDB].Expire("key", 1)
+	expireCommand([]string{"key", "1"})
 	result = persistCommand([]string{"key"})
 	if result != oneReply {
 		t.Errorf("persistCommand([]string{\"key\"}) = %s; want :1\\r\\n", result)
 	}
+
 	time.Sleep(2 * time.Second)
-	if redis.databases[redis.selectedDB].Get("key") == "" {
-		t.Errorf("database.Get(\"key\") = %s; want \"\"", redis.databases[redis.selectedDB].Get("key"))
+	if getCommand([]string{"key"}) == nullReply {
+		t.Errorf("database.Get(\"key\") = %s; want \"\"", getCommand([]string{"key"}))
 	}
+
+	selectCommand([]string{"0"})
 }
 
 func TestExistsCommand(t *testing.T) {
-	redis.databases[redis.selectedDB].Flush()
+	defer teardown()
 
 	// Test with non-existing key
 	result := existsCommand([]string{"non-existing-key"})
@@ -336,7 +363,7 @@ func TestExistsCommand(t *testing.T) {
 	}
 
 	// Test with existing key
-	redis.databases[redis.selectedDB].Set("key", "value")
+	setCommand([]string{"key", "value"})
 	result = existsCommand([]string{"key"})
 	if result != oneReply {
 		t.Errorf("existsCommand([]string{\"key\"}) = %s; want :1\\r\\n", result)
@@ -344,7 +371,8 @@ func TestExistsCommand(t *testing.T) {
 }
 
 func TestKeysCommand(t *testing.T) {
-	redis.databases[redis.selectedDB].Flush()
+	defer teardown()
+	selectCommand([]string{"4"})
 
 	// Test with no keys
 	result := keysCommand([]string{"non-existing-pattern"})
@@ -353,19 +381,21 @@ func TestKeysCommand(t *testing.T) {
 	}
 
 	// Test with one key
-	redis.databases[redis.selectedDB].Set("key1", "value1")
+	setCommand([]string{"key1", "value1"})
 	result = keysCommand([]string{"key1"})
-	if result != "*1\r\n$4\r\nkey1\r\n" {
+
+	if result != returnArray([]string{"key1"}) {
 		t.Errorf("keysCommand([]string{\"key1\"}) = %s; want *1\\r\\n$4\\r\nkey1\\r\\n", result)
 	}
 
 	// Test with multiple keys
-	redis.databases[redis.selectedDB].Set("key2", "value2")
-	redis.databases[redis.selectedDB].Set("key3", "value3")
+	msetCommand([]string{"key2", "value2", "key3", "value3"})
 	result = keysCommand([]string{"key*"})
-	if result != "*3\r\n$4\r\nkey1\r\n$4\r\nkey2\r\n$4\r\nkey3\r\n" {
+
+	if result != returnArray([]string{"key1", "key2", "key3"}) {
 		t.Errorf("keysCommand([]string{\"key*\"}) = %s; want *3\\r\\n$4\\r\nkey1\\r\\n$4\\r\nkey2\\r\\n$4\\r\nkey3\\r\\n", result)
 	}
+	selectCommand([]string{"0"})
 }
 
 func TestSelectCommand(t *testing.T) {
@@ -414,13 +444,14 @@ func TestSelectCommand(t *testing.T) {
 
 func TestFlushDBCommand(t *testing.T) {
 	// Test flushing an existing database
-	redis.databases[redis.selectedDB].Set("key", "value")
+	// redis.databases[redis.selectedDB].Set("key", "value")
+	setCommand([]string{"key", "value"})
 	result := flushdbCommand([]string{})
 	if result != okReply {
 		t.Errorf("flushDBCommand([]string{}) = %s; want +OK\\r\\n", result)
 	}
-	if redis.databases[redis.selectedDB].Get("key") != "" {
-		t.Errorf("database.Get(\"key\") = %s; want \"\"", redis.databases[redis.selectedDB].Get("key"))
+	if getCommand([]string{"key"}) != nullReply {
+		t.Errorf("database.Get(\"key\") = %s; want \"\"", getCommand([]string{"key"}))
 	}
 
 	// Test flushing a non-existing database
@@ -432,17 +463,21 @@ func TestFlushDBCommand(t *testing.T) {
 
 func TestFlushAllCommand(t *testing.T) {
 	// Test flushing all databases
-	redis.databases[redis.selectedDB].Set("key1", "value1")
+	setCommand([]string{"key1", "value1"})
 	selectCommand([]string{"1"})
-	redis.databases[redis.selectedDB].Set("key2", "value2")
+	setCommand([]string{"key2", "value2"})
+
 	result := flushallCommand([]string{})
 	if result != okReply {
 		t.Errorf("flushAllCommand([]string{}) = %s; want +OK\\r\\n", result)
 	}
-	if redis.databases[redis.selectedDB].Get("key1") != "" {
-		t.Errorf("database.Get(\"key1\") = %s; want \"\"", redis.databases[redis.selectedDB].Get("key1"))
+
+	if getCommand([]string{"key2"}) != nullReply {
+		t.Errorf("database.Get(\"key2\") = %s; want \"\"", getCommand([]string{"key2"}))
 	}
-	if redis.databases[redis.selectedDB].Get("key2") != "" {
-		t.Errorf("database.Get(\"key2\") = %s; want \"\"", redis.databases[redis.selectedDB].Get("key2"))
+
+	selectCommand([]string{"0"})
+	if getCommand([]string{"key1"}) != nullReply {
+		t.Errorf("database.Get(\"key1\") = %s; want \"\"", getCommand([]string{"key1"}))
 	}
 }
