@@ -20,7 +20,7 @@ type Database struct {
 	StringKeys map[string]string
 	ExpireKeys map[string]time.Time
 	stopSignal chan bool
-	mutex      sync.Mutex
+	mutex      sync.RWMutex
 }
 
 // NewDatabase returns a pointer to a new database.
@@ -142,7 +142,10 @@ func (db *Database) checkAndRemoveExpiredKeys() {
 // checkAndRemoveExpiredKey checks if a key has expired.
 // If a key has expired, it removes the key.
 func (db *Database) checkAndRemoveExpiredKey(key string) bool {
+	db.mutex.RLock()
 	expire, ok := db.ExpireKeys[key]
+	db.mutex.RUnlock()
+
 	if !ok {
 		return false
 	}
@@ -164,11 +167,25 @@ func (db *Database) StopExpireChecker() {
 	db.stopSignal <- true
 }
 
+func (db *Database) GetExpire(key string) time.Time {
+	db.mutex.RLock()
+	expire, ok := db.ExpireKeys[key]
+	db.mutex.RUnlock()
+
+	if !ok {
+		return time.Time{}
+	}
+
+	return expire
+}
+
 // Get returns the value of the given key.
 // If the key does not exist, it returns an empty string.
 // If the key has expired, it returns an empty string.
 func (db *Database) Get(key string) string {
+	db.mutex.RLock()
 	storage, ok := db.StringKeys[key]
+	db.mutex.RUnlock()
 	if !ok {
 		return ""
 	}
@@ -176,46 +193,6 @@ func (db *Database) Get(key string) string {
 	if db.checkAndRemoveExpiredKey(key) {
 		return ""
 	}
-
-	return storage
-}
-
-// GetSet sets the value of the given key and returns the old value.
-// If the key does not exist, it creates a new key.
-// If the key has expired, it creates a new key.
-func (db *Database) GetSet(key string, value string) string {
-	db.mutex.Lock()
-	defer db.mutex.Unlock()
-
-	storage, ok := db.StringKeys[key]
-	if !ok {
-		db.StringKeys[key] = value
-		return ""
-	}
-
-	if db.checkAndRemoveExpiredKey(key) {
-		db.StringKeys[key] = value
-		return ""
-	}
-
-	oldValue := storage
-	db.StringKeys[key] = value
-
-	return oldValue
-}
-
-// GetDel returns the value of the given key and deletes the key.
-// If the key does not exist, it returns an empty string.
-// If the key has expired, it returns an empty string.
-func (db *Database) GetDel(key string) string {
-	storage, ok := db.StringKeys[key]
-	if !ok {
-		return ""
-	}
-
-	db.mutex.Lock()
-	delete(db.StringKeys, key)
-	db.mutex.Unlock()
 
 	return storage
 }
@@ -228,13 +205,65 @@ func (db *Database) Set(key string, value string) {
 	db.StringKeys[key] = value
 }
 
+// Del deletes the given keys.
+func (db *Database) Del(keys ...string) int {
+	numberOfKeysDeleted := 0
+
+	for _, key := range keys {
+		value := db.Get(key)
+		if value != "" {
+			db.mutex.Lock()
+			delete(db.StringKeys, key)
+			db.mutex.Unlock()
+			numberOfKeysDeleted++
+		}
+	}
+
+	return numberOfKeysDeleted
+}
+
+// GetSet sets the value of the given key and returns the old value.
+// If the key does not exist, it creates a new key.
+// If the key has expired, it creates a new key.
+func (db *Database) GetSet(key string, value string) string {
+	storage := db.Get(key)
+
+	if storage == "" {
+		db.StringKeys[key] = value
+		return ""
+	}
+
+	if db.checkAndRemoveExpiredKey(key) {
+		db.Set(key, value)
+		return ""
+	}
+
+	oldValue := storage
+	db.Set(key, value)
+
+	return oldValue
+}
+
+// GetDel returns the value of the given key and deletes the key.
+// If the key does not exist, it returns an empty string.
+// If the key has expired, it returns an empty string.
+func (db *Database) GetDel(key string) string {
+	storage := db.Get(key)
+	if storage == "" {
+		return ""
+	}
+
+	db.Del(key)
+
+	return storage
+}
+
 // Setpx sets the value of the given key with the given milliseconds.
 func (db *Database) Setpx(key string, milliseconds int, value string) {
+	db.Set(key, value)
 	db.mutex.Lock()
-	defer db.mutex.Unlock()
-
-	db.StringKeys[key] = value
 	db.ExpireKeys[key] = time.Now().Add(time.Millisecond * time.Duration(milliseconds))
+	db.mutex.Unlock()
 }
 
 // MSet sets the values of the given keys.
@@ -247,7 +276,7 @@ func (db *Database) MSet(args ...string) {
 // MSetNX sets the values of the given keys if the keys do not exist.
 func (db *Database) MSetNX(args ...string) bool {
 	for i := 0; i < len(args); i += 2 {
-		if _, ok := db.StringKeys[args[i]]; ok {
+		if storage := db.Get(args[i]); storage != "" {
 			return false
 		}
 	}
@@ -271,34 +300,13 @@ func (db *Database) MGet(args ...string) []string {
 	return values
 }
 
-// Del deletes the given keys.
-func (db *Database) Del(keys ...string) int {
-	db.mutex.Lock()
-	defer db.mutex.Unlock()
-
-	numberOfKeysDeleted := 0
-
-	for _, key := range keys {
-		_, ok := db.StringKeys[key]
-		if ok {
-			delete(db.StringKeys, key)
-			numberOfKeysDeleted++
-		}
-	}
-
-	return numberOfKeysDeleted
-}
-
 // Incr increments the value of the given key by 1.
 // If the key does not exist, it creates a new key with the value 1.
 // If value of the key is not an integer, it returns 0.
 func (db *Database) Incr(key string) int {
-	db.mutex.Lock()
-	defer db.mutex.Unlock()
-
-	storage, ok := db.StringKeys[key]
-	if !ok {
-		db.StringKeys[key] = "1"
+	storage := db.Get(key)
+	if storage == "" {
+		db.Set(key, "1")
 		return 1
 	}
 
@@ -312,7 +320,7 @@ func (db *Database) Incr(key string) int {
 	}
 
 	value++
-	db.StringKeys[key] = strconv.Itoa(value)
+	db.Set(key, strconv.Itoa(value))
 
 	return value
 }
@@ -321,12 +329,9 @@ func (db *Database) Incr(key string) int {
 // If the key does not exist, it creates a new key with the value increment.
 // If value of the key is not an integer, it returns 0.
 func (db *Database) IncrBy(key string, increment int) int {
-	db.mutex.Lock()
-	defer db.mutex.Unlock()
-
-	storage, ok := db.StringKeys[key]
-	if !ok {
-		db.StringKeys[key] = strconv.Itoa(increment)
+	storage := db.Get(key)
+	if storage == "" {
+		db.Set(key, strconv.Itoa(increment))
 		return increment
 	}
 
@@ -340,7 +345,7 @@ func (db *Database) IncrBy(key string, increment int) int {
 	}
 
 	value += increment
-	db.StringKeys[key] = strconv.Itoa(value)
+	db.Set(key, strconv.Itoa(value))
 
 	return value
 }
@@ -349,12 +354,9 @@ func (db *Database) IncrBy(key string, increment int) int {
 // If the key does not exist, it creates a new key with the value -1.
 // If value of the key is not an integer, it returns 0.
 func (db *Database) Decr(key string) int {
-	db.mutex.Lock()
-	defer db.mutex.Unlock()
-
-	storage, ok := db.StringKeys[key]
-	if !ok {
-		db.StringKeys[key] = "-1"
+	storage := db.Get(key)
+	if storage == "" {
+		db.Set(key, "-1")
 		return -1
 	}
 
@@ -368,7 +370,7 @@ func (db *Database) Decr(key string) int {
 	}
 
 	value--
-	db.StringKeys[key] = strconv.Itoa(value)
+	db.Set(key, strconv.Itoa(value))
 
 	return value
 }
@@ -377,12 +379,9 @@ func (db *Database) Decr(key string) int {
 // If the key does not exist, it creates a new key with the value -decrement.
 // If value of the key is not an integer, it returns 0.
 func (db *Database) DecrBy(key string, decrement int) int {
-	db.mutex.Lock()
-	defer db.mutex.Unlock()
-
-	storage, ok := db.StringKeys[key]
-	if !ok {
-		db.StringKeys[key] = strconv.Itoa(-decrement)
+	storage := db.Get(key)
+	if storage == "" {
+		db.Set(key, strconv.Itoa(-decrement))
 		return -decrement
 	}
 
@@ -396,7 +395,7 @@ func (db *Database) DecrBy(key string, decrement int) int {
 	}
 
 	value -= decrement
-	db.StringKeys[key] = strconv.Itoa(value)
+	db.Set(key, strconv.Itoa(value))
 
 	return value
 }
@@ -404,8 +403,8 @@ func (db *Database) DecrBy(key string, decrement int) int {
 // Expire sets the expire time of the given key.
 // If the key does not exist, it returns false.
 func (db *Database) Expire(key string, seconds int) bool {
-	_, ok := db.StringKeys[key]
-	if !ok {
+	storage := db.Get(key)
+	if storage == "" {
 		return false
 	}
 
@@ -420,30 +419,33 @@ func (db *Database) Expire(key string, seconds int) bool {
 // If the key does not exist, it returns -2.
 // If the key exists but has no associated expire, it returns -1.
 func (db *Database) TTL(key string) int {
-	_, ok := db.StringKeys[key]
-	if !ok {
+	// db.mutex.Lock()
+	// _, ok := db.StringKeys[key]
+	// db.mutex.Unlock()
+	storage := db.Get(key)
+	if storage == "" {
 		return -2
 	}
 
-	storage, ok := db.ExpireKeys[key]
-	if !ok {
+	expire := db.GetExpire(key)
+	if expire == (time.Time{}) {
 		return -1
 	}
 
-	return int(time.Until(storage).Seconds())
+	return int(time.Until(expire).Seconds())
 }
 
 // Persist removes the expire time of the given key.
 // If the key exists but has no associated expire, it returns false.
 // If the key does not exist, it returns false.
 func (db *Database) Persist(key string) bool {
-	_, ok := db.StringKeys[key]
-	if !ok {
+	storage := db.Get(key)
+	if storage == "" {
 		return false
 	}
 
-	_, ok = db.ExpireKeys[key]
-	if !ok {
+	expire := db.GetExpire(key)
+	if expire == (time.Time{}) {
 		return false
 	}
 
@@ -459,8 +461,8 @@ func (db *Database) Exists(key ...string) int {
 	numberOfKeysExisting := 0
 
 	for _, key := range key {
-		_, ok := db.StringKeys[key]
-		if ok {
+		storage := db.Get(key)
+		if storage != "" {
 			numberOfKeysExisting++
 		}
 	}
@@ -472,12 +474,14 @@ func (db *Database) Exists(key ...string) int {
 func (db *Database) Keys(pattern string) []string {
 	keys := make([]string, 0, len(db.StringKeys))
 
+	db.mutex.RLock()
 	for key := range db.StringKeys {
 		match, _ := filepath.Match(pattern, key)
 		if match {
 			keys = append(keys, key)
 		}
 	}
+	db.mutex.RUnlock()
 
 	return keys
 }
